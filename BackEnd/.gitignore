@@ -1,2 +1,3 @@
 .env
 fastapi-env/
+.venv/
