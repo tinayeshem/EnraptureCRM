@@ -1,11 +1,9 @@
 from fastapi import FastAPI
+from database.db import supabase
 
 app = FastAPI()
 
 @app.get("/")
 def read_root():
-    return {"Hello": "World"}
-
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: str = None):
-    return {"item_id": item_id, "q": q}
+    response = supabase.table("customer").select("*").execute()
+    return response.data
