@@ -4,9 +4,14 @@ from typing import Optional
 from pydantic import BaseModel
 
 
-class Booking(BaseModel):
-    booking_id: Optional[int] = None
+class BookingCreate(BaseModel):
     customer_id: int
-    booking_date: datetime
-    booking_status: str
+    booking_date: Optional[datetime] = None
+    booking_status: str = "confirmed"
     total_price: Decimal
+
+    model_config = {"extra": "ignore"}
+
+
+class Booking(BookingCreate):
+    booking_id: Optional[int] = None

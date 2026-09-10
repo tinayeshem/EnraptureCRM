@@ -1,0 +1,29 @@
+# Booking flow for CRM
+
+Step 1: POST /customer
+  Fill in customer details:
+  {
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "email": "jane@example.com",
+    "phone": "+123456789"
+  }
+  ➔ Returns: "customer_id": 14
+
+Step 2: POST /booking
+  Fill in booking details using that customer_id:
+  {
+    "customer_id": 14,
+    "booking_status": "confirmed",
+    "total_price": 250.00
+  }
+  ➔ Returns: "booking_id": 10
+
+Step 3 (Optional): POST /room-booking (or camp, boat, etc.)
+  Fill in service details using that booking_id:
+  {
+    "booking_id": 10,
+    "check_in_date": "2026-10-01",
+    "check_out_date": "2026-10-05",
+    "number_of_guests": 2
+  }

@@ -1,5 +1,5 @@
-from .customer import Customer
-from .Booking import Booking
+from .customer import Customer, CustomerCreate
+from .Booking import Booking, BookingCreate
 from .room_booking import RoomBooking
 from .camp_booking import CampBooking
 from .catering import Catering
@@ -9,7 +9,9 @@ from .boat_booking import BoatBooking
 
 __all__ = [
     "Customer",
+    "CustomerCreate",
     "Booking",
+    "BookingCreate",
     "RoomBooking",
     "CampBooking",
     "Catering",
