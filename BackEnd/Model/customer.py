@@ -1,11 +1,12 @@
+from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel
-from uuid import UUID
 
 
 class Customer(BaseModel):
-    customer_id : UUID
-    firstName : str
-    lastName :str
-    email : str
-    phone : str
-    
+    customer_id: Optional[int] = None
+    first_name: str
+    last_name: str
+    email: str
+    phone: Optional[str] = None
+    created_at: Optional[datetime] = None

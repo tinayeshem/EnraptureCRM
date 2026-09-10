@@ -1,23 +1,12 @@
-from pydantic import BaseModel
 from datetime import datetime
-from uuid import UUID
 from decimal import Decimal
-from enum import Enum
+from typing import Optional
+from pydantic import BaseModel
 
-
-class Status(Enum):
-    PENDING = "Pending"
-    CONFIRMED = "Confirmed"
-    CANCELLED = "Cancelled"
-    
-    
 
 class Booking(BaseModel):
-    booking_id : UUID
-    customer_id : UUID
-    booking_date : datetime
-    booking_status : Status
-    total_price : Decimal
-
-
-
+    booking_id: Optional[int] = None
+    customer_id: int
+    booking_date: datetime
+    booking_status: str
+    total_price: Decimal
