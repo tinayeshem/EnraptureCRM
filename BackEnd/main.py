@@ -8,6 +8,7 @@ from Model import (
     BookingCreate,
     RoomBooking,
     CampBooking,
+    DEFAULT_CAMPSITE_ID,
     Catering,
     ShuttleBooking,
     Review,
@@ -149,6 +150,9 @@ def create_camp_booking(camp_booking: CampBooking):
         payload = camp_booking.model_dump(mode="json", exclude_none=True)
         if payload.get("camp_booking_id") in (None, 0):
             payload["camp_booking_id"] = get_next_id("camping_booking", "camp_booking_id")
+
+        if not payload.get("campsite_id"):
+            payload["campsite_id"] = DEFAULT_CAMPSITE_ID
 
         response = supabase.table("camping_booking").insert(payload).execute()
         return {
