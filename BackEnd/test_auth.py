@@ -33,7 +33,7 @@ from auth.dependencies import (
 
 
 class TestRolesAndPermissions(unittest.TestCase):
-    """Verifies RBAC rules and wildcard permission evaluations."""
+    """Verifies RBAC rules and wildcard permission evaluations for admin, dev, management."""
 
     def test_admin_has_all_permissions(self):
         """Admin should have wildcard '*' access matching any permission."""
@@ -52,7 +52,7 @@ class TestRolesAndPermissions(unittest.TestCase):
         self.assertTrue(has_permission(Role.DEV.value, Permission.BOOKING_CREATE))
 
     def test_management_permissions(self):
-        """Management should have reports, staff view, and CRM operations, but not system debug."""
+        """Management should have reports, staff view, and CRM operations, but not system debug or user management."""
         self.assertTrue(has_permission(Role.MANAGEMENT.value, Permission.REPORTS_VIEW))
         self.assertTrue(has_permission(Role.MANAGEMENT.value, Permission.REPORTS_MANAGE))
         self.assertTrue(has_permission(Role.MANAGEMENT.value, Permission.USERS_VIEW))
@@ -61,19 +61,6 @@ class TestRolesAndPermissions(unittest.TestCase):
         # Denied
         self.assertFalse(has_permission(Role.MANAGEMENT.value, Permission.SYSTEM_DEBUG))
         self.assertFalse(has_permission(Role.MANAGEMENT.value, Permission.USERS_MANAGE))
-
-    def test_normal_user_permissions(self):
-        """Normal user can perform operational CRM duties, but not management or destructive actions."""
-        self.assertTrue(has_permission(Role.NORMAL_USER.value, Permission.CUSTOMER_CREATE))
-        self.assertTrue(has_permission(Role.NORMAL_USER.value, Permission.CUSTOMER_VIEW))
-        self.assertTrue(has_permission(Role.NORMAL_USER.value, Permission.BOOKING_CREATE))
-        self.assertTrue(has_permission(Role.NORMAL_USER.value, Permission.SERVICES_CREATE))
-        # Denied
-        self.assertFalse(has_permission(Role.NORMAL_USER.value, Permission.CUSTOMER_DELETE))
-        self.assertFalse(has_permission(Role.NORMAL_USER.value, Permission.USERS_VIEW))
-        self.assertFalse(has_permission(Role.NORMAL_USER.value, Permission.USERS_MANAGE))
-        self.assertFalse(has_permission(Role.NORMAL_USER.value, Permission.REPORTS_VIEW))
-        self.assertFalse(has_permission(Role.NORMAL_USER.value, Permission.SYSTEM_DEBUG))
 
     def test_current_user_model_has_permission(self):
         user = CurrentUser(
@@ -109,18 +96,21 @@ class TestFastApiAuthorizationEndpoints(unittest.TestCase):
             self.assertEqual(response.status_code, 401)
 
     def test_authenticated_permission_denied(self):
-        """User with role 'normal_user' accessing 'users.view' receives 403 Forbidden."""
-        normal_user = CurrentUser(
+        """User with role 'management' accessing 'users.manage' receives 403 Forbidden."""
+        mgr_user = CurrentUser(
             id="user-123",
-            email="staff@crm.com",
-            role=Role.NORMAL_USER.value,
+            email="manager@crm.com",
+            role=Role.MANAGEMENT.value,
         )
 
-        app.dependency_overrides[get_current_user] = lambda: normal_user
+        app.dependency_overrides[get_current_user] = lambda: mgr_user
         try:
-            response = self.client.get("/auth/users")
+            response = self.client.patch(
+                "/auth/users/user-2/role",
+                json={"role": "dev"},
+            )
             self.assertEqual(response.status_code, 403)
-            self.assertIn("users.view", response.json()["detail"])
+            self.assertIn("users.manage", response.json()["detail"])
         finally:
             app.dependency_overrides.clear()
 
@@ -146,8 +136,8 @@ class TestFastApiAuthorizationEndpoints(unittest.TestCase):
         """GET /auth/me returns current user profile and sorted permissions."""
         user = CurrentUser(
             id="user-abc",
-            email="user@crm.com",
-            role=Role.NORMAL_USER.value,
+            email="manager@crm.com",
+            role=Role.MANAGEMENT.value,
             first_name="Jane",
             last_name="Doe",
         )
@@ -158,18 +148,20 @@ class TestFastApiAuthorizationEndpoints(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             data = response.json()
             self.assertEqual(data["id"], "user-abc")
-            self.assertEqual(data["email"], "user@crm.com")
-            self.assertEqual(data["role"], "normal_user")
-            self.assertIn("customer.create", data["permissions"])
+            self.assertEqual(data["email"], "manager@crm.com")
+            self.assertEqual(data["role"], "management")
+            self.assertIn("customer.*", data["permissions"])
+            self.assertIn("reports.view", data["permissions"])
+            self.assertTrue(user.has_permission("customer.create"))
         finally:
             app.dependency_overrides.clear()
 
     def test_role_update_restricted_to_admin_or_dev(self):
         """PATCH /auth/users/{user_id}/role requires users.manage permission."""
-        normal_user = CurrentUser(
-            id="user-1",
-            email="staff@crm.com",
-            role=Role.NORMAL_USER.value,
+        mgr_user = CurrentUser(
+            id="mgr-1",
+            email="manager@crm.com",
+            role=Role.MANAGEMENT.value,
         )
         admin_user = CurrentUser(
             id="admin-1",
@@ -177,12 +169,12 @@ class TestFastApiAuthorizationEndpoints(unittest.TestCase):
             role=Role.ADMIN.value,
         )
 
-        # 1. Denied for normal user
-        app.dependency_overrides[get_current_user] = lambda: normal_user
+        # 1. Denied for management
+        app.dependency_overrides[get_current_user] = lambda: mgr_user
         try:
             response = self.client.patch(
                 "/auth/users/user-2/role",
-                json={"role": "management"},
+                json={"role": "dev"},
             )
             self.assertEqual(response.status_code, 403)
         finally:
@@ -192,16 +184,16 @@ class TestFastApiAuthorizationEndpoints(unittest.TestCase):
         app.dependency_overrides[get_current_user] = lambda: admin_user
         with patch("auth.service.AuthService.update_user_role") as mock_update:
             mock_update.return_value = {
-                "message": "Role updated to 'management' successfully",
-                "user": {"id": "user-2", "role": "management"},
+                "message": "Role updated to 'dev' successfully",
+                "user": {"id": "user-2", "role": "dev"},
             }
             try:
                 response = self.client.patch(
                     "/auth/users/user-2/role",
-                    json={"role": "management"},
+                    json={"role": "dev"},
                 )
                 self.assertEqual(response.status_code, 200)
-                self.assertEqual(response.json()["user"]["role"], "management")
+                self.assertEqual(response.json()["user"]["role"], "dev")
             finally:
                 app.dependency_overrides.clear()
 

@@ -13,7 +13,7 @@ class SignupRequest(BaseModel):
     password: str
     first_name: Optional[str] = ""
     last_name: Optional[str] = ""
-    role: Optional[Role] = Role.NORMAL_USER
+    role: Optional[Role] = Role.MANAGEMENT
 
 
 class LoginRequest(BaseModel):
@@ -28,14 +28,14 @@ class RoleUpdateRequest(BaseModel):
 @auth_router.post("/signup", status_code=status.HTTP_201_CREATED)
 def signup(request: SignupRequest):
     """
-    Registers a new user in Supabase Auth and registers profile with specified role (default: normal_user).
+    Registers a new user in Supabase Auth and registers profile with specified role (default: management).
     """
     return AuthService.signup_user(
         email=request.email,
         password=request.password,
         first_name=request.first_name or "",
         last_name=request.last_name or "",
-        role=request.role.value if request.role else Role.NORMAL_USER.value,
+        role=request.role.value if request.role else Role.MANAGEMENT.value,
     )
 
 

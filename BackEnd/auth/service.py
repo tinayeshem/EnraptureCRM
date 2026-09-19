@@ -11,7 +11,7 @@ class AuthService:
         password: str,
         first_name: str = "",
         last_name: str = "",
-        role: str = Role.NORMAL_USER.value,
+        role: str = Role.MANAGEMENT.value,
     ) -> Dict[str, Any]:
         """Registers a user via Supabase Auth and creates their profile in public.users."""
         if role not in [r.value for r in Role]:
@@ -95,14 +95,14 @@ class AuthService:
         email = auth_res.user.email or ""
 
         # Fetch profile
-        role = Role.NORMAL_USER.value
+        role = Role.MANAGEMENT.value
         first_name = ""
         last_name = ""
         try:
             prof = supabase.table("users").select("*").eq("id", user_id).execute()
             if prof.data:
                 user_data = prof.data[0]
-                role = user_data.get("role", Role.NORMAL_USER.value)
+                role = user_data.get("role", Role.MANAGEMENT.value)
                 first_name = user_data.get("first_name", "")
                 last_name = user_data.get("last_name", "")
                 if not user_data.get("is_active", True):
@@ -112,7 +112,7 @@ class AuthService:
                     )
             else:
                 metadata = getattr(auth_res.user, "user_metadata", {}) or {}
-                role = metadata.get("role", Role.NORMAL_USER.value)
+                role = metadata.get("role", Role.MANAGEMENT.value)
                 first_name = metadata.get("first_name", "")
                 last_name = metadata.get("last_name", "")
         except HTTPException:

@@ -10,11 +10,11 @@ CREATE TABLE IF NOT EXISTS public.users (
     email TEXT NOT NULL UNIQUE,
     first_name TEXT,
     last_name TEXT,
-    role TEXT NOT NULL DEFAULT 'normal_user',
+    role TEXT NOT NULL DEFAULT 'management',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-    CONSTRAINT valid_role CHECK (role IN ('admin', 'dev', 'management', 'normal_user'))
+    CONSTRAINT valid_role CHECK (role IN ('admin', 'dev', 'management'))
 );
 
 -- 2. Indexes for fast lookup
@@ -47,7 +47,7 @@ BEGIN
         NEW.email,
         COALESCE(NEW.raw_user_meta_data->>'first_name', ''),
         COALESCE(NEW.raw_user_meta_data->>'last_name', ''),
-        COALESCE(NEW.raw_user_meta_data->>'role', 'normal_user')
+        COALESCE(NEW.raw_user_meta_data->>'role', 'management')
     )
     ON CONFLICT (id) DO UPDATE SET
         email = EXCLUDED.email,

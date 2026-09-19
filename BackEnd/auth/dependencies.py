@@ -16,7 +16,7 @@ AUTH_ENABLED = os.environ.get("AUTH_ENABLED", "true").lower() in ("true", "1", "
 class CurrentUser(BaseModel):
     id: str
     email: str
-    role: str = Role.NORMAL_USER.value
+    role: str = Role.MANAGEMENT.value
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     is_active: bool = True
@@ -100,7 +100,7 @@ def get_current_user(
         return CurrentUser(
             id=user_id,
             email=profile.get("email") or email,
-            role=profile.get("role", Role.NORMAL_USER.value),
+            role=profile.get("role", Role.MANAGEMENT.value),
             first_name=profile.get("first_name"),
             last_name=profile.get("last_name"),
             is_active=profile.get("is_active", True),
@@ -108,7 +108,7 @@ def get_current_user(
 
     # Fallback if profile row hasn't been synced to public.users yet
     user_metadata = getattr(auth_user, "user_metadata", {}) or {}
-    role = user_metadata.get("role", Role.NORMAL_USER.value)
+    role = user_metadata.get("role", Role.MANAGEMENT.value)
     first_name = user_metadata.get("first_name")
     last_name = user_metadata.get("last_name")
 

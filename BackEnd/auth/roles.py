@@ -6,7 +6,6 @@ class Role(str, Enum):
     ADMIN = "admin"
     DEV = "dev"
     MANAGEMENT = "management"
-    NORMAL_USER = "normal_user"
 
 
 # Granular Permissions
@@ -70,15 +69,6 @@ ROLE_PERMISSIONS: Dict[str, Set[str]] = {
         "booking.*",
         "services.*",
         "review.*",
-    },
-    Role.NORMAL_USER.value: {
-        Permission.CUSTOMER_VIEW,
-        Permission.CUSTOMER_CREATE,
-        Permission.BOOKING_VIEW,
-        Permission.BOOKING_CREATE,
-        Permission.SERVICES_VIEW,
-        Permission.SERVICES_CREATE,
-        Permission.REVIEW_CREATE,
     },
 }
 
