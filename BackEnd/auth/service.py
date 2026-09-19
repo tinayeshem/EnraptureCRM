@@ -1,6 +1,6 @@
 from typing import Optional, Dict, Any, List
 from fastapi import HTTPException, status
-from database.db import supabase
+from database.db import supabase, get_service_client
 from auth.roles import Role, get_role_permissions
 
 
@@ -20,31 +20,58 @@ class AuthService:
                 detail=f"Invalid role '{role}'. Allowed roles: {[r.value for r in Role]}",
             )
 
+        user_obj = None
+        access_token = None
+
+        # 1. Try creating pre-confirmed user via Admin API with fresh service-role client
         try:
-            signup_res = supabase.auth.sign_up({
+            admin_client = get_service_client()
+            admin_res = admin_client.auth.admin.create_user({
                 "email": email,
                 "password": password,
-                "options": {
-                    "data": {
-                        "first_name": first_name,
-                        "last_name": last_name,
-                        "role": role,
-                    }
+                "email_confirm": True,
+                "user_metadata": {
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "role": role,
                 },
             })
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Signup failed: {str(e)}",
-            )
+            if admin_res and admin_res.user:
+                user_obj = admin_res.user
+        except Exception as admin_err:
+            pass
 
-        if not signup_res.user:
+        # 2. Fall back to standard sign_up if admin api was not available
+        if not user_obj:
+            try:
+                signup_res = supabase.auth.sign_up({
+                    "email": email,
+                    "password": password,
+                    "options": {
+                        "data": {
+                            "first_name": first_name,
+                            "last_name": last_name,
+                            "role": role,
+                        }
+                    },
+                })
+                if signup_res and signup_res.user:
+                    user_obj = signup_res.user
+                    if signup_res.session and signup_res.session.access_token:
+                        access_token = signup_res.session.access_token
+            except Exception as e:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Signup failed: {str(e)}",
+                )
+
+        if not user_obj:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Signup failed: Supabase did not return user information.",
             )
 
-        user_id = str(signup_res.user.id)
+        user_id = str(user_obj.id)
 
         # Upsert profile into public.users
         try:
@@ -59,9 +86,7 @@ class AuthService:
         except Exception:
             pass  # If table is not created yet or handled by trigger
 
-        access_token = None
-        if signup_res.session and signup_res.session.access_token:
-            access_token = signup_res.session.access_token
+
 
         return {
             "message": "User registered successfully",
@@ -75,7 +100,8 @@ class AuthService:
     def login_user(email: str, password: str) -> Dict[str, Any]:
         """Authenticates user with email and password via Supabase Auth."""
         try:
-            auth_res = supabase.auth.sign_in_with_password({
+            auth_client = get_service_client()
+            auth_res = auth_client.auth.sign_in_with_password({
                 "email": email,
                 "password": password,
             })
