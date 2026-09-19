@@ -74,12 +74,26 @@ class TestResult:
 
 class ApiClientWrapper:
     """Unifies TestClient (in-process) and httpx.Client (live server) behind one interface."""
-    def __init__(self, base_url: Optional[str] = None):
+    def __init__(self, base_url: Optional[str] = None, token: Optional[str] = None):
         self.base_url = base_url.rstrip("/") if base_url else None
+        auth_token = token or os.environ.get("CRM_AUTH_TOKEN")
         if self.base_url:
-            self._client = httpx.Client(base_url=self.base_url, timeout=15.0)
+            headers = {}
+            if auth_token:
+                headers["Authorization"] = f"Bearer {auth_token}"
+            self._client = httpx.Client(base_url=self.base_url, headers=headers, timeout=15.0)
             self.mode = f"Live Server ({self.base_url})"
         else:
+            from auth.dependencies import get_current_user, CurrentUser
+            from auth.roles import Role
+            # For in-process test runs, automatically authenticate as Admin
+            app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+                id="00000000-0000-0000-0000-000000000001",
+                email="admin_tester@enrapturecrm.com",
+                role=Role.ADMIN.value,
+                first_name="Admin",
+                last_name="Tester",
+            )
             self._client = TestClient(app)
             self.mode = "FastAPI In-Process (TestClient)"
 
@@ -685,10 +699,16 @@ def main():
         action="store_true",
         help="Keep generated test records in the database rather than deleting them.",
     )
+    parser.add_argument(
+        "--token",
+        type=str,
+        default=None,
+        help="Optional Bearer token for authenticating against a live server.",
+    )
 
     args = parser.parse_args()
 
-    client = ApiClientWrapper(base_url=args.base_url)
+    client = ApiClientWrapper(base_url=args.base_url, token=args.token)
     tester = PostMethodsTester(
         client=client,
         verbose=args.verbose,

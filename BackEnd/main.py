@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Depends
 from database.db import supabase
+from auth import auth_router, require_permission, Permission
 from Model import (
     Customer,
     CustomerCreate,
@@ -17,9 +18,12 @@ from Model import (
 
 app = FastAPI(
     title="Enrapture CRM API",
-    description="CRM API with FastAPI, Supabase, and Pydantic models",
+    description="CRM API with FastAPI, Supabase Auth, RBAC permissions, and Pydantic models",
     version="1.0.0",
 )
+
+# Include Authentication & Access Control router
+app.include_router(auth_router)
 
 
 def get_next_id(table_name: str, id_column: str) -> int:
@@ -36,14 +40,19 @@ def get_next_id(table_name: str, id_column: str) -> int:
     return 1
 
 
-@app.get("/", tags=["Root"])
+@app.get("/", tags=["Root"], dependencies=[Depends(require_permission(Permission.CUSTOMER_VIEW))])
 def read_root():
     response = supabase.table("customer").select("*").execute()
     return response.data
 
 
 # --- Customer ---
-@app.post("/customer", tags=["Customer"], status_code=status.HTTP_201_CREATED)
+@app.post(
+    "/customer",
+    tags=["Customer"],
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission(Permission.CUSTOMER_CREATE))],
+)
 def create_customer(customer: CustomerCreate):
     first_name = customer.first_name.strip()
     last_name = customer.last_name.strip()
@@ -85,7 +94,12 @@ def create_customer(customer: CustomerCreate):
 
 
 # --- Booking ---
-@app.post("/booking", tags=["Booking"], status_code=status.HTTP_201_CREATED)
+@app.post(
+    "/booking",
+    tags=["Booking"],
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission(Permission.BOOKING_CREATE))],
+)
 def create_booking(booking: BookingCreate):
     # Verify customer exists
     customer_check = (
@@ -124,7 +138,12 @@ def create_booking(booking: BookingCreate):
 
 
 # --- Room Booking ---
-@app.post("/room-booking", tags=["Room Booking"], status_code=status.HTTP_201_CREATED)
+@app.post(
+    "/room-booking",
+    tags=["Room Booking"],
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission(Permission.SERVICES_CREATE))],
+)
 def create_room_booking(room_booking: RoomBooking):
     try:
         payload = room_booking.model_dump(mode="json", exclude_none=True)
@@ -144,7 +163,12 @@ def create_room_booking(room_booking: RoomBooking):
 
 
 # --- Camp Booking ---
-@app.post("/camp-booking", tags=["Camp Booking"], status_code=status.HTTP_201_CREATED)
+@app.post(
+    "/camp-booking",
+    tags=["Camp Booking"],
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission(Permission.SERVICES_CREATE))],
+)
 def create_camp_booking(camp_booking: CampBooking):
     try:
         payload = camp_booking.model_dump(mode="json", exclude_none=True)
@@ -167,7 +191,12 @@ def create_camp_booking(camp_booking: CampBooking):
 
 
 # --- Catering ---
-@app.post("/catering", tags=["Catering"], status_code=status.HTTP_201_CREATED)
+@app.post(
+    "/catering",
+    tags=["Catering"],
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission(Permission.SERVICES_CREATE))],
+)
 def create_catering(catering: Catering):
     try:
         payload = catering.model_dump(mode="json", exclude_none=True)
@@ -187,7 +216,12 @@ def create_catering(catering: Catering):
 
 
 # --- Shuttle Booking ---
-@app.post("/shuttle-booking", tags=["Shuttle Booking"], status_code=status.HTTP_201_CREATED)
+@app.post(
+    "/shuttle-booking",
+    tags=["Shuttle Booking"],
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission(Permission.SERVICES_CREATE))],
+)
 def create_shuttle_booking(shuttle_booking: ShuttleBooking):
     try:
         payload = shuttle_booking.model_dump(mode="json", exclude_none=True)
@@ -207,7 +241,12 @@ def create_shuttle_booking(shuttle_booking: ShuttleBooking):
 
 
 # --- Review ---
-@app.post("/review", tags=["Review"], status_code=status.HTTP_201_CREATED)
+@app.post(
+    "/review",
+    tags=["Review"],
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission(Permission.REVIEW_CREATE))],
+)
 def create_review(review: Review):
     try:
         payload = review.model_dump(mode="json", exclude_none=True)
@@ -229,7 +268,12 @@ def create_review(review: Review):
 
 
 # --- Boat Booking ---
-@app.post("/boat-booking", tags=["Boat Booking"], status_code=status.HTTP_201_CREATED)
+@app.post(
+    "/boat-booking",
+    tags=["Boat Booking"],
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission(Permission.SERVICES_CREATE))],
+)
 def create_boat_booking(boat_booking: BoatBooking):
     try:
         payload = boat_booking.model_dump(mode="json", exclude_none=True)
